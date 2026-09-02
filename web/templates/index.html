@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  {% set page_title = site_name ~ ' — send a file, get a link' %}
+  {% include "_head.html" %}
+  <style>
+    .hero{padding:var(--sp-6) 0 var(--sp-5);text-align:center}
+    .hero-bars{display:flex;justify-content:center;margin-bottom:var(--sp-4)}
+    .hero-bars .signal-bars{height:44px;gap:6px}
+    .hero-bars .bar{width:6px}
+    .hero h1{
+      font-size:clamp(2.1rem,6vw,3.4rem);line-height:1.05;
+      margin-bottom:var(--sp-3);
+    }
+    .hero h1 .accent{color:var(--signal)}
+    .hero-lead{
+      max-width:520px;margin:0 auto var(--sp-5);
+      color:var(--mist);font-size:1.05rem;line-height:1.6;
+    }
+    .hero-actions{display:flex;gap:var(--sp-2);justify-content:center;flex-wrap:wrap;margin-bottom:var(--sp-3)}
+    .status-line{
+      display:inline-flex;align-items:center;gap:8px;margin-top:var(--sp-4);
+      font-family:var(--font-mono);font-size:.78rem;color:var(--mist-2);
+    }
+    .status-dot{width:7px;height:7px;border-radius:50%;background:var(--success);position:relative}
+    .status-dot::after{
+      content:'';position:absolute;inset:-4px;border-radius:50%;
+      border:1px solid var(--success);opacity:.5;
+      animation:statusPing 2s ease-out infinite;
+    }
+    @keyframes statusPing{0%{transform:scale(.6);opacity:.6}100%{transform:scale(1.8);opacity:0}}
+
+    /* Flow section — the UPLINK / RELAY / DOWNLINK explainer */
+    .flow{padding:var(--sp-6) 0}
+    .flow-head{text-align:center;margin-bottom:var(--sp-5)}
+    .flow-head h2{font-size:1.5rem;margin-bottom:8px}
+    .flow-head p{color:var(--mist);font-size:.92rem}
+    .flow-rail{
+      display:grid;grid-template-columns:repeat(3,1fr);gap:var(--sp-3);
+      position:relative;
+    }
+    .flow-rail::before{
+      content:'';position:absolute;top:26px;left:8%;right:8%;height:2px;
+      background:linear-gradient(90deg,var(--signal),var(--transfer),var(--signal));
+      z-index:0;opacity:.35;
+    }
+    .flow-node{position:relative;z-index:1;text-align:center;padding:0 var(--sp-2)}
+    .flow-node-dot{
+      width:52px;height:52px;margin:0 auto var(--sp-3);border-radius:50%;
+      background:var(--ink-3);border:1px solid var(--line);
+      display:flex;align-items:center;justify-content:center;
+      font-family:var(--font-mono);font-size:.7rem;font-weight:600;color:var(--mist);
+    }
+    .flow-node:nth-child(1) .flow-node-dot{border-color:var(--signal);color:var(--signal)}
+    .flow-node:nth-child(2) .flow-node-dot{border-color:var(--transfer);color:var(--transfer)}
+    .flow-node:nth-child(3) .flow-node-dot{border-color:var(--signal);color:var(--signal)}
+    .flow-node-label{font-family:var(--font-mono);font-size:.68rem;letter-spacing:.12em;color:var(--paper);margin-bottom:4px}
+    .flow-node-desc{font-size:.82rem;color:var(--mist);line-height:1.5}
+    @media (max-width:640px){
+      .flow-rail{grid-template-columns:1fr;gap:var(--sp-4)}
+      .flow-rail::before{display:none}
+    }
+
+    /* Feature grid */
+    .features{padding:var(--sp-6) 0}
+    .feature-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:var(--sp-3)}
+    .feature-card{padding:var(--sp-4);display:flex;flex-direction:column;gap:10px}
+    .feature-icon{
+      width:38px;height:38px;border-radius:var(--r-md);
+      background:var(--ink-4);display:flex;align-items:center;justify-content:center;
+      color:var(--signal);
+    }
+    .feature-icon svg{width:19px;height:19px}
+    .feature-card h3{font-size:.98rem;font-weight:600}
+    .feature-card p{font-size:.85rem;color:var(--mist);line-height:1.55}
+
+    /* CTA band */
+    .cta-band{padding:var(--sp-6) 0 var(--sp-5)}
+    .cta-card{padding:var(--sp-5);display:flex;align-items:center;justify-content:space-between;gap:var(--sp-4);flex-wrap:wrap}
+    .cta-card h3{font-size:1.2rem;margin-bottom:4px}
+    .cta-card p{color:var(--mist);font-size:.88rem}
+
+    @media (max-width:640px){
+      .cta-card{flex-direction:column;align-items:flex-start;text-align:left}
+      .cta-card .btn{width:100%}
+    }
+  </style>
+  <script type="application/ld+json">
+  {"@context":"https://schema.org","@type":"WebApplication","name":"{{ site_name }}","applicationCategory":"MultimediaApplication","operatingSystem":"Web","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}}
+  </script>
+</head>
+<body>
+
+{% include "_chrome.html" %}
+
+<main>
+  <section class="hero shell">
+    <div class="hero-bars">
+      <div class="signal-bars live" aria-hidden="true">
+        <span class="bar"></span><span class="bar"></span><span class="bar"></span><span class="bar"></span><span class="bar"></span>
+      </div>
+    </div>
+    <h1>Send a file.<br>Get a <span class="accent">link</span> back.</h1>
+    <p class="hero-lead">{{ site_tagline }}</p>
+    <div class="hero-actions">
+      {% if bot_username %}
+      <a class="btn btn-primary" href="https://t.me/{{ bot_username }}" target="_blank" rel="noopener">Open the bot</a>
+      {% endif %}
+      <a class="btn btn-ghost" href="#flow">See how it works</a>
+    </div>
+    <div class="status-line"><span class="status-dot" aria-hidden="true"></span> ONLINE — accepting transfers</div>
+  </section>
+
+  <section class="flow shell" id="flow">
+    <div class="flow-head" data-reveal>
+      <h2>Three stages. No app.</h2>
+      <p>Your file never leaves Telegram — it just gets a signal it can be reached by.</p>
+    </div>
+    <div class="flow-rail">
+      <div class="flow-node" data-reveal>
+        <div class="flow-node-dot">01</div>
+        <div class="flow-node-label">UPLINK</div>
+        <div class="flow-node-desc">Send any file to the bot in a normal Telegram chat — no size gymnastics, no separate app.</div>
+      </div>
+      <div class="flow-node" data-reveal>
+        <div class="flow-node-dot">02</div>
+        <div class="flow-node-label">RELAY</div>
+        <div class="flow-node-desc">It's stored in a private channel you control, and the bot hands back a link that points straight at it.</div>
+      </div>
+      <div class="flow-node" data-reveal>
+        <div class="flow-node-dot">03</div>
+        <div class="flow-node-label">DOWNLINK</div>
+        <div class="flow-node-desc">Anyone with the link streams or downloads it in a browser — seek-anywhere, no waiting for the whole file.</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="features shell" data-reveal>
+    <div class="feature-grid">
+      <div class="card feature-card">
+        <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg></div>
+        <h3>Seek-anywhere streaming</h3>
+        <p>Jump to any point in a video or track instantly — no waiting for a full download first.</p>
+      </div>
+      <div class="card feature-card">
+        <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></div>
+        <h3>Real parallel transfers</h3>
+        <p>Every user, every file — nothing waits in line behind someone else's download.</p>
+      </div>
+      <div class="card feature-card">
+        <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></div>
+        <h3>Batch links</h3>
+        <p>Bundle several files behind a single page so you only need to share one thing.</p>
+      </div>
+      <div class="card feature-card">
+        <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+        <h3>Nothing leaves Telegram</h3>
+        <p>Files live in your own private channel — this bot only ever generates the door to reach them.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="cta-band shell">
+    <div class="card cta-card" data-reveal>
+      <div>
+        <h3>Ready when you are</h3>
+        <p>Open a chat with the bot and drop in your first file.</p>
+      </div>
+      {% if bot_username %}
+      <a class="btn btn-primary" href="https://t.me/{{ bot_username }}" target="_blank" rel="noopener">Open the bot</a>
+      {% endif %}
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="site-footer-inner">
+    <span class="footer-meta">Built on Telegram · Created by {{ creator_name }}</span>
+    <div class="footer-links">
+      <a href="/robots.txt">robots.txt</a>
+      <a href="/sitemap.xml">sitemap.xml</a>
+      <a href="/health">status</a>
+    </div>
+  </div>
+</footer>
+
+<script src="/static/theme.js?v=10" defer></script>
+</body>
+</html>
