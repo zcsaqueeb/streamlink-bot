@@ -1,0 +1,49 @@
+{#  Shared <head> partial — SEO, Open Graph, Twitter cards, theme anti-flash.
+    Expected context vars (all optional, with sane fallbacks):
+      page_title, page_desc, canonical_url, og_image, og_type, robots
+#}
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover"/>
+<meta name="theme-color" content="#0B0F14" media="(prefers-color-scheme: dark)"/>
+<meta name="theme-color" content="#F5F6F8" media="(prefers-color-scheme: light)"/>
+
+<title>{{ page_title or site_name }}</title>
+<meta name="description" content="{{ page_desc or 'Generate instant shareable links and stream video & audio right in your browser — superfast parallel downloads, seek-anywhere streaming.' }}"/>
+<meta name="robots" content="{{ robots or 'index, follow' }}"/>
+{% if canonical_url %}<link rel="canonical" href="{{ canonical_url }}"/>{% endif %}
+
+{# ── Open Graph ── #}
+<meta property="og:site_name" content="{{ site_name }}"/>
+<meta property="og:type" content="{{ og_type or 'website' }}"/>
+<meta property="og:title" content="{{ page_title or site_name }}"/>
+<meta property="og:description" content="{{ page_desc or 'Instant link generation with seek-anywhere streaming and fast downloads.' }}"/>
+{% if canonical_url %}<meta property="og:url" content="{{ canonical_url }}"/>{% endif %}
+{% if og_image %}<meta property="og:image" content="{{ og_image }}"/>{% endif %}
+
+{# ── Twitter ── #}
+<meta name="twitter:card" content="{{ 'summary_large_image' if og_image else 'summary' }}"/>
+<meta name="twitter:title" content="{{ page_title or site_name }}"/>
+<meta name="twitter:description" content="{{ page_desc or 'Instant link generation with seek-anywhere streaming and fast downloads.' }}"/>
+{% if og_image %}<meta name="twitter:image" content="{{ og_image }}"/>{% endif %}
+
+<link rel="icon" type="image/svg+xml" href="/static/favicon.svg"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+{# PERF: font loaded as its own parallel <link> rather than @import inside
+   theme.css, so the browser fetches CSS and fonts at the same time
+   instead of one after the other (an @import forces CSS to fully parse
+   first, delaying font discovery and first paint). #}
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"/>
+<link rel="stylesheet" href="/static/theme.css?v=10"/>
+
+{# Anti-flash: set theme before first paint #}
+<script>
+  (function(){
+    try{
+      var m=localStorage.getItem('fl_theme')||'system';
+      var eff=m==='system'?((window.matchMedia&&window.matchMedia('(prefers-color-scheme: light)').matches)?'light':'dark'):m;
+      document.documentElement.setAttribute('data-theme',eff);
+      document.documentElement.setAttribute('data-theme-mode',m);
+    }catch(e){document.documentElement.setAttribute('data-theme','dark');}
+  })();
+</script>
