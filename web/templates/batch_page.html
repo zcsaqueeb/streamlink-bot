@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  {% include "_head.html" %}
+  <style>
+    body{padding:var(--sp-5) 0 var(--sp-6)}
+    .wrap{max-width:1100px;margin:0 auto;padding:0 var(--sp-4);position:relative;z-index:1}
+
+    .b-header{text-align:center;margin-bottom:var(--sp-5)}
+    .b-header .signal-bars{justify-content:center;display:flex;margin-bottom:14px;height:30px}
+    .b-header h1{font-size:1.7rem;margin-bottom:8px}
+    .b-header p{color:var(--mist);font-size:.88rem}
+    .b-header code{font-family:var(--font-mono);background:var(--ink-4);padding:2px 8px;border-radius:6px;font-size:.78rem;color:var(--paper)}
+
+    /* Toolbar: search + actions */
+    .toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:center;margin:0 auto var(--sp-5);max-width:760px}
+    .search{
+      flex:1;min-width:200px;display:flex;align-items:center;gap:8px;
+      background:var(--ink-3);border:1px solid var(--line);
+      border-radius:var(--r-md);padding:11px 14px;
+      transition:border-color var(--t-fast);
+    }
+    .search:focus-within{border-color:var(--signal)}
+    .search svg{width:15px;height:15px;color:var(--mist-2);flex-shrink:0}
+    .search input{flex:1;background:none;border:none;outline:none;color:var(--paper);font-family:var(--font-body);font-size:.9rem}
+    .search input::placeholder{color:var(--mist-2)}
+
+    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}
+
+    .b-card{
+      display:flex;flex-direction:column;overflow:hidden;
+      transition:transform var(--t-med) var(--ease),box-shadow var(--t-med),border-color var(--t-fast);
+    }
+    .b-card:hover{transform:translateY(-4px);border-color:var(--line);box-shadow:var(--shadow-pop)}
+    .b-card.hide{display:none}
+
+    .card-thumb{width:100%;height:150px;background:var(--ink-4);display:flex;align-items:center;justify-content:center;font-size:48px;overflow:hidden;position:relative;opacity:.85}
+    .card-thumb img{width:100%;height:100%;object-fit:cover;transition:transform .3s}
+    .card-thumb .card-thumb-skel{position:absolute;inset:0;background:linear-gradient(100deg,var(--ink-4) 30%,var(--ink-3) 50%,var(--ink-4) 70%);background-size:200% 100%;animation:shimmer 1.6s linear infinite}
+    @keyframes shimmer{to{background-position:-200% 0}}
+    .b-card:hover .card-thumb img{transform:scale(1.05)}
+    .play-overlay{
+      position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+      background:rgba(0,0,0,.35);opacity:0;transition:opacity .2s;
+    }
+    .play-overlay svg{width:30px;height:30px;color:#fff}
+    .b-card:hover .play-overlay{opacity:1}
+
+    .card-body{padding:14px 16px;flex:1;display:flex;flex-direction:column;gap:10px}
+    .card-name{font-weight:600;font-size:.86rem;word-break:break-word;line-height:1.35;color:var(--paper)}
+    .card-meta{display:flex;gap:6px;flex-wrap:wrap}
+    .card-meta .chip{font-family:var(--font-mono);font-size:.68rem}
+    .card-actions{display:flex;gap:8px;margin-top:auto}
+    .card-actions .btn{flex:1;padding:9px;font-size:.78rem;border-radius:var(--r-sm)}
+    .card-actions .btn.icon{flex:0 0 auto;width:38px;padding:9px}
+    .card-actions .btn.icon svg{width:15px;height:15px}
+    .card-actions .btn svg{width:14px;height:14px}
+
+    .b-empty{text-align:center;padding:60px 20px;color:var(--mist);font-size:1rem}
+    .b-footer{text-align:center;margin-top:var(--sp-6);font-size:.78rem;color:var(--mist-2)}
+
+    @media(max-width:640px){
+      .grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+      .card-thumb{height:105px;font-size:36px}
+    }
+    @media(max-width:480px){
+      .b-header h1{font-size:1.35rem}
+      .toolbar{flex-direction:column;align-items:stretch}
+      .toolbar .search{min-width:0}
+      .toolbar .btn{width:100%}
+      .grid{grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px}
+      .card-thumb{height:92px;font-size:30px}
+      .card-body{padding:10px 12px;gap:8px}
+      .card-name{font-size:.78rem}
+      .card-actions{flex-wrap:wrap}
+      .card-actions .btn{flex:1 1 auto;padding:9px;font-size:.74rem}
+      .card-actions .btn.icon{flex:0 0 100%;width:100%}
+    }
+  </style>
+</head>
+<body>
+
+{% include "_chrome.html" %}
+
+<div class="wrap">
+  <div class="b-header">
+    <div class="signal-bars live" aria-hidden="true">
+      <span class="bar"></span><span class="bar"></span><span class="bar"></span><span class="bar"></span><span class="bar"></span>
+    </div>
+    <h1>Batch transfer</h1>
+    <p><span data-count="{{ total }}">{{ total }}</span> file{% if total != 1 %}s{% endif %} &nbsp;·&nbsp; <code>{{ batch_id }}</code></p>
+  </div>
+
+  {% if files %}
+  <div class="toolbar">
+    <label class="search">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" id="searchBox" placeholder="Filter files…" oninput="filterFiles(this.value)" aria-label="Filter files"/>
+    </label>
+    <button class="btn btn-primary" type="button" onclick="downloadAll()">Download all ({{ total }})</button>
+    <button class="btn btn-ghost" type="button" onclick="copyAll()">Copy all links</button>
+  </div>
+
+  <div class="grid" id="grid">
+    {% for f in files %}
+    <div class="card b-card" data-reveal data-name="{{ f.file_name|lower }}">
+      <div class="card-thumb">
+        {% if f._thumb_url %}
+        <div class="card-thumb-skel"></div>
+        <img src="{{ f._thumb_url }}" alt="" loading="lazy"
+             onload="this.previousElementSibling && this.previousElementSibling.remove()"
+             onerror="this.parentElement.innerHTML='<span>{{ f._icon }}</span>'"/>
+        {% else %}<span>{{ f._icon }}</span>{% endif %}
+        {% if f._streamable %}<div class="play-overlay"><svg viewBox="0 0 24 24" fill="currentColor"><polygon points="6 3 20 12 6 21 6 3"/></svg></div>{% endif %}
+      </div>
+      <div class="card-body">
+        <div class="card-name">{{ f.file_name }}</div>
+        <div class="card-meta">
+          <span class="chip">{{ f._size_human }}</span>
+          <span class="chip">{{ f.type }}</span>
+        </div>
+        <div class="card-actions">
+          <a class="btn btn-primary" href="{{ f._download_url }}">Download</a>
+          {% if f._streamable %}<a class="btn btn-transfer icon" href="{{ f._stream_url }}" target="_blank" rel="noopener" title="Stream"><svg viewBox="0 0 24 24" fill="currentColor"><polygon points="6 3 20 12 6 21 6 3"/></svg></a>{% endif %}
+          <a class="btn btn-ghost icon" href="{{ f._page_url }}" target="_blank" rel="noopener" title="Open page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  <div class="b-empty" id="noResults" style="display:none">No files match your filter.</div>
+  {% else %}
+  <div class="b-empty">No files in this batch.</div>
+  {% endif %}
+
+  <div class="b-footer">Powered by {{ site_name }} · Created by {{ creator_name }}</div>
+</div>
+
+<script src="/static/theme.js?v=10" defer></script>
+<script>
+  var ALL_LINKS=[{% for f in files %}"{{ f._download_url }}"{% if not loop.last %},{% endif %}{% endfor %}];
+
+  function filterFiles(q){
+    q=(q||'').trim().toLowerCase();
+    var cards=document.querySelectorAll('.b-card'),shown=0;
+    cards.forEach(function(c){
+      var match=c.getAttribute('data-name').indexOf(q)!==-1;
+      c.classList.toggle('hide',!match);if(match)shown++;
+    });
+    var nr=document.getElementById('noResults');
+    if(nr)nr.style.display=shown?'none':'block';
+  }
+  async function downloadAll(){
+    if(window.FL)FL.toast('Checking '+ALL_LINKS.length+' file'+(ALL_LINKS.length!==1?'s':'')+'…');
+    // A broken/expired link returns a full HTML error page (not a file),
+    // and clicking an <a> that points at one causes a real navigation —
+    // the browser would replace this whole batch view just because one
+    // file out of many was unavailable. A lightweight HEAD pre-check lets
+    // us quietly skip only the broken ones instead.
+    var results=await Promise.all(ALL_LINKS.map(function(url){
+      return fetch(url,{method:'HEAD'}).then(function(res){return res.ok;}).catch(function(){return false;});
+    }));
+    var ok=[],failedCount=0;
+    ALL_LINKS.forEach(function(url,i){if(results[i])ok.push(url);else failedCount++;});
+    ok.forEach(function(url,i){
+      setTimeout(function(){var a=document.createElement('a');a.href=url;a.download='';document.body.appendChild(a);a.click();document.body.removeChild(a);},i*800);
+    });
+    if(window.FL){
+      if(failedCount)FL.toast(failedCount+' file'+(failedCount!==1?'s':'')+' unavailable, skipped. Starting '+ok.length+' download'+(ok.length!==1?'s':'')+'…',ok.length===0);
+      else FL.toast('Starting '+ok.length+' download'+(ok.length!==1?'s':'')+'…');
+    }
+  }
+  function copyAll(){
+    if(window.FL)FL.copy(ALL_LINKS.join('\n'),ALL_LINKS.length+' links copied');
+  }
+</script>
+</body>
+</html>
