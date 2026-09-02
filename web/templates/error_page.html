@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  {% set page_title = title ~ ' — ' ~ site_name %}
+  {% set page_desc = message %}
+  {% set robots = 'noindex, follow' %}
+  {% include "_head.html" %}
+  <style>
+    body{display:flex;align-items:center;justify-content:center;padding:var(--sp-4);min-height:100vh}
+    .err-wrap{max-width:460px;width:100%}
+    .err-card{text-align:center;padding:var(--sp-6) var(--sp-5)}
+
+    .err-bars{display:flex;justify-content:center;gap:5px;height:38px;margin-bottom:var(--sp-4)}
+    .err-bars .bar{width:5px;border-radius:3px;background:var(--danger);opacity:.35}
+    .err-bars .bar:nth-child(1){height:30%}
+    .err-bars .bar:nth-child(2){height:15%}
+    .err-bars .bar:nth-child(3){height:45%}
+    .err-bars .bar:nth-child(4){height:20%}
+    .err-bars .bar:nth-child(5){height:35%}
+
+    .err-code{
+      font-family:var(--font-mono);font-size:.85rem;letter-spacing:.1em;
+      color:var(--mist-2);margin-bottom:6px;
+    }
+    h1{font-size:1.5rem;margin-bottom:12px;line-height:1.3}
+    p{color:var(--mist);font-size:.92rem;line-height:1.65;margin-bottom:var(--sp-5)}
+    .err-actions{display:flex;flex-direction:column;gap:10px;align-items:stretch}
+    .err-tips{
+      margin-top:var(--sp-5);text-align:left;background:var(--ink-4);
+      border:1px solid var(--line);border-radius:var(--r-md);
+      padding:16px 18px;font-size:.82rem;color:var(--mist);line-height:1.7;
+    }
+    .err-tips strong{color:var(--paper);display:block;margin-bottom:8px;font-family:var(--font-mono);font-size:.72rem;letter-spacing:.08em;text-transform:uppercase}
+    .err-tips ul{margin:0;padding-left:18px}
+    .err-tips li{margin-bottom:2px}
+    @media(max-width:480px){.err-card{padding:var(--sp-5) var(--sp-4)}}
+  </style>
+</head>
+<body>
+
+{% include "_chrome.html" %}
+
+<div class="err-wrap">
+  <div class="card err-card">
+    <div class="err-bars" aria-hidden="true">
+      <span class="bar"></span><span class="bar"></span><span class="bar"></span><span class="bar"></span><span class="bar"></span>
+    </div>
+    <div class="err-code">SIGNAL {{ code }}</div>
+    <h1>{{ title }}</h1>
+    <p>{{ message }}</p>
+    <div class="err-actions">
+      <a href="/" class="btn btn-primary btn-block">Go to home</a>
+      <button onclick="history.back()" class="btn btn-ghost btn-block" type="button">Go back</button>
+    </div>
+    <div class="err-tips" id="tips"></div>
+  </div>
+</div>
+
+<script src="/static/theme.js?v=10" defer></script>
+<script>
+  var code={{ code }};
+  var config={
+    404:{tips:['The uploader may have deleted the file.','The link might have been shared incorrectly — check for typos.','Ask the uploader to generate a new share link.']},
+    410:{tips:['This link had a time limit set by the uploader.','Ask the uploader to generate a fresh permanent link.','Permanent links (no expiry) are available by default.']},
+    500:{tips:['This is a temporary server issue — try again in a moment.','If the problem persists, contact the bot admin.']},
+    503:{tips:['The connection to Telegram needs a moment to recover.','Try again shortly — this usually clears on its own.']}
+  };
+  var info=config[code]||{tips:[]};
+  var tipsEl=document.getElementById('tips');
+  if(info.tips.length){tipsEl.innerHTML='<strong>What you can do</strong><ul>'+info.tips.map(function(t){return'<li>'+t+'</li>';}).join('')+'</ul>';}
+  else{tipsEl.remove();}
+</script>
+</body>
+</html>
