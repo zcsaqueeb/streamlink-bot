@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  {% include "_head.html" %}
+  <style>
+    body{padding:var(--sp-4) 0 var(--sp-6)}
+    .page-wrap{max-width:640px;margin:0 auto;padding:0 var(--sp-4)}
+
+    .file-card{padding:var(--sp-5)}
+    @media (max-width:480px){.file-card{padding:var(--sp-4)}}
+
+    /* Thumbnail / icon */
+    .thumb-wrap{
+      width:100%;border-radius:var(--r-lg);overflow:hidden;margin-bottom:var(--sp-4);
+      background:var(--ink-4);min-height:180px;
+      display:flex;align-items:center;justify-content:center;position:relative;
+      border:1px solid var(--line);
+    }
+    .thumb-wrap img{width:100%;display:block;max-height:320px;object-fit:cover}
+    .thumb-skel{position:absolute;inset:0;background:linear-gradient(100deg,var(--ink-4) 30%,var(--ink-3) 50%,var(--ink-4) 70%);background-size:200% 100%;animation:shimmer 1.6s linear infinite}
+    @keyframes shimmer{to{background-position:-200% 0}}
+    .thumb-placeholder{font-size:56px;line-height:1;opacity:.5}
+
+    .icon-wrap{text-align:center;margin-bottom:var(--sp-3)}
+    .icon-wrap span{font-size:46px;opacity:.85}
+
+    h1{font-size:1.15rem;font-weight:600;font-family:var(--font-body);text-align:center;word-break:break-word;line-height:1.4;margin-bottom:10px}
+
+    .expiry-badge{display:flex;align-items:center;justify-content:center;gap:6px;margin:8px 0;font-size:.8rem;color:var(--transfer);font-family:var(--font-mono)}
+    .expiry-badge.expired{color:var(--danger)}
+
+    .meta{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:var(--sp-3) 0 var(--sp-4)}
+    .meta .chip{font-family:var(--font-mono);font-size:.72rem;font-weight:500}
+
+    .btn-group{display:flex;flex-direction:column;gap:10px}
+    .btn-row{display:flex;gap:10px}
+    .btn-row .btn{flex:1}
+
+    /* Download progress */
+    .dl-progress{display:none;margin-top:14px}
+    .dl-progress.active{display:block}
+    .dl-progress-bar{height:5px;width:0;background:linear-gradient(90deg,var(--signal),var(--transfer));border-radius:4px;transition:width .3s ease}
+    .dl-progress-bar{background:linear-gradient(90deg,var(--signal),var(--transfer))}
+    #dlProgress{height:5px;border-radius:4px;background:var(--ink-4);overflow:hidden}
+
+    /* ── Player ── */
+    .player-section{margin-top:var(--sp-5)}
+    .player-label{
+      display:flex;align-items:center;gap:8px;justify-content:center;
+      font-family:var(--font-mono);font-size:.68rem;letter-spacing:.12em;text-transform:uppercase;
+      color:var(--mist-2);margin-bottom:12px;
+    }
+    .vp-wrap{position:relative;background:#000;border-radius:var(--r-lg);overflow:hidden;box-shadow:var(--shadow-pop)}
+    .vp-wrap:hover .vp-controls,.vp-wrap.show-controls .vp-controls{opacity:1}
+    .vp-wrap video{width:100%;display:block;max-height:380px;background:#000;cursor:pointer}
+    .vp-spinner{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;opacity:0;transition:opacity .2s}
+    .vp-spinner.active{opacity:1}
+    .spinner-ring{width:44px;height:44px;border-radius:50%;border:3px solid rgba(255,255,255,.18);border-top-color:var(--transfer);animation:spin .8s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .vp-flash{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
+    .vp-flash-icon{font-size:52px;opacity:0}
+    .vp-flash-icon.pop{animation:flashPop .4s ease forwards}
+    @keyframes flashPop{0%{opacity:.9;transform:scale(.8)}100%{opacity:0;transform:scale(1.5)}}
+    .vp-controls{position:absolute;bottom:0;left:0;right:0;padding:8px 12px 10px;background:linear-gradient(to top,rgba(0,0,0,.88),transparent);opacity:0;transition:opacity .25s}
+    .vp-progress-wrap{position:relative;height:5px;border-radius:4px;background:rgba(255,255,255,.2);cursor:pointer;margin-bottom:10px;transition:height .15s}
+    .vp-progress-wrap:hover{height:8px}
+    .vp-buffered{position:absolute;top:0;left:0;height:100%;border-radius:4px;background:rgba(255,255,255,.28);pointer-events:none}
+    .vp-played{position:absolute;top:0;left:0;height:100%;border-radius:4px;background:linear-gradient(90deg,var(--signal),var(--transfer));pointer-events:none}
+    .vp-thumb{position:absolute;top:50%;transform:translate(-50%,-50%);width:13px;height:13px;border-radius:50%;background:#fff;pointer-events:none;box-shadow:0 0 4px rgba(0,0,0,.5);opacity:0;transition:opacity .15s}
+    .vp-progress-wrap:hover .vp-thumb{opacity:1}
+    .vp-ctrl-row{display:flex;align-items:center;gap:8px}
+    .vp-btn{background:none;border:none;cursor:pointer;color:#fff;font-size:1rem;display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:8px;transition:background .15s;flex-shrink:0}
+    .vp-btn:hover{background:rgba(255,255,255,.16)}
+    .vp-time{font-family:var(--font-mono);font-size:.72rem;color:rgba(255,255,255,.75);white-space:nowrap;flex-shrink:0;font-variant-numeric:tabular-nums}
+    .vp-vol-group{display:flex;align-items:center;gap:6px;flex-shrink:0}
+    input[type=range].vp-vol{-webkit-appearance:none;appearance:none;width:70px;height:4px;border-radius:4px;background:rgba(255,255,255,.28);outline:none;cursor:pointer}
+    input[type=range].vp-vol::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;border-radius:50%;background:#fff;cursor:pointer}
+    input[type=range].vp-vol::-moz-range-thumb{width:12px;height:12px;border-radius:50%;background:#fff;border:none;cursor:pointer}
+    .vp-speed{background:rgba(255,255,255,.1);border:none;color:#fff;font-family:var(--font-mono);font-size:.7rem;font-weight:500;border-radius:6px;padding:3px 7px;cursor:pointer;flex-shrink:0}
+    .vp-speed:hover{background:rgba(255,255,255,.2)}
+    .vp-speed option{background:#141A23;color:#fff}
+    .vp-spacer{flex:1}
+    .player-section audio{width:100%;border-radius:var(--r-md)}
+
+    .vp-unsupported{display:none;flex-direction:column;align-items:center;text-align:center;padding:36px 20px;gap:6px}
+    .vp-unsupported-icon{font-size:40px;margin-bottom:6px;opacity:.8}
+    .vp-unsupported p{margin:0;color:#fff}
+    .vp-unsupported-sub{font-size:.82rem;color:rgba(255,255,255,.6);max-width:420px}
+    .vp-unsupported-actions{margin-top:14px}
+
+    /* ── Settings (gear) popover ── */
+    .vp-settings-wrap{position:relative;flex-shrink:0}
+    .vp-settings-menu{
+      position:absolute;bottom:calc(100% + 8px);right:0;min-width:170px;
+      background:rgba(15,20,27,.97);backdrop-filter:blur(10px);
+      border:1px solid rgba(255,255,255,.08);border-radius:10px;
+      padding:6px;box-shadow:var(--shadow-pop);
+      display:none;flex-direction:column;gap:2px;z-index:5;
+    }
+    .vp-settings-menu.open{display:flex}
+    .vp-settings-row{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:6px 8px;font-size:.78rem;color:#fff;border-radius:6px}
+    .vp-settings-row:hover{background:rgba(255,255,255,.06)}
+    .vp-settings-row .vp-speed{margin:0}
+
+    /* Tiny toggle switch */
+    .vp-switch{position:relative;display:inline-block;width:34px;height:19px;flex-shrink:0}
+    .vp-switch input{opacity:0;width:0;height:0}
+    .vp-switch-track{position:absolute;inset:0;background:rgba(255,255,255,.22);border-radius:20px;cursor:pointer;transition:background .15s}
+    .vp-switch-track::before{content:"";position:absolute;width:15px;height:15px;left:2px;top:2px;background:#fff;border-radius:50%;transition:transform .15s}
+    .vp-switch input:checked+.vp-switch-track{background:var(--signal)}
+    .vp-switch input:checked+.vp-switch-track::before{transform:translateX(15px)}
+
+    /* Hover-scrub time badge above the seek bar */
+    .vp-hover-time{
+      position:absolute;bottom:14px;transform:translateX(-50%);
+      background:rgba(0,0,0,.85);color:#fff;font-family:var(--font-mono);font-size:.66rem;font-variant-numeric:tabular-nums;
+      padding:3px 7px;border-radius:5px;pointer-events:none;opacity:0;transition:opacity .1s;white-space:nowrap;
+    }
+    .vp-progress-wrap:hover .vp-hover-time{opacity:1}
+
+    /* Double-tap / double-click seek zones */
+    .vp-tapzone{position:absolute;top:0;bottom:46px;width:38%;display:flex;align-items:center}
+    .vp-tapzone-left{left:0;justify-content:flex-start}
+    .vp-tapzone-right{right:0;justify-content:flex-end}
+    .vp-tap-ripple{
+      margin:0 18px;font-size:.85rem;font-weight:600;color:#fff;background:rgba(255,255,255,.14);
+      padding:10px 14px;border-radius:50px;opacity:0;transform:scale(.7);pointer-events:none;
+      transition:opacity .25s,transform .25s;
+    }
+    .vp-tap-ripple.show{opacity:1;transform:scale(1)}
+
+    /* Resume-from-last-position toast */
+    .vp-resume-toast{
+      position:absolute;top:12px;left:50%;transform:translateX(-50%) translateY(-8px);
+      display:none;align-items:center;gap:10px;background:rgba(15,20,27,.94);backdrop-filter:blur(8px);
+      border:1px solid rgba(255,255,255,.1);border-radius:50px;padding:8px 8px 8px 16px;
+      font-size:.78rem;color:#fff;box-shadow:var(--shadow-pop);opacity:0;transition:opacity .2s,transform .2s;z-index:6;
+    }
+    .vp-resume-toast.show{display:flex;opacity:1;transform:translateX(-50%) translateY(0)}
+    .vp-resume-toast button{
+      background:rgba(255,255,255,.13);border:none;color:#fff;font-size:.74rem;font-weight:600;
+      padding:6px 12px;border-radius:50px;cursor:pointer;white-space:nowrap;transition:background .15s;
+    }
+    .vp-resume-toast button:hover{background:rgba(255,255,255,.24)}
+
+    .vp-wrap.cursor-hide,.vp-wrap.cursor-hide video{cursor:none}
+
+    /* ── Auto Guide — one-time, no-command help banner ── */
+    .auto-guide{
+      position:fixed;left:50%;bottom:18px;transform:translateX(-50%) translateY(140%);
+      max-width:min(92vw,460px);width:100%;display:flex;align-items:flex-start;gap:10px;
+      background:var(--ink-3);backdrop-filter:blur(10px);
+      border:1px solid var(--line);border-radius:var(--r-lg);
+      padding:14px 14px 14px 16px;box-shadow:var(--shadow-pop);
+      z-index:50;transition:transform .35s var(--ease);
+    }
+    .auto-guide.show{transform:translateX(-50%) translateY(0)}
+    .auto-guide .ag-icon{flex-shrink:0;margin-top:2px;color:var(--transfer)}
+    .auto-guide .ag-icon svg{width:18px;height:18px}
+    .auto-guide .ag-text{flex:1;font-size:.82rem;line-height:1.5;color:var(--paper)}
+    .auto-guide .ag-text b{color:var(--signal)}
+    .auto-guide .ag-close{
+      flex-shrink:0;background:var(--ink-4);border:1px solid var(--line);color:var(--mist);
+      width:26px;height:26px;border-radius:50%;cursor:pointer;font-size:.85rem;
+      display:flex;align-items:center;justify-content:center;transition:background .15s;
+    }
+    .auto-guide .ag-close:hover{background:var(--ink-4);color:var(--paper)}
+    @media(max-width:480px){.auto-guide{bottom:12px;padding:12px 12px 12px 14px}}
+
+    .file-footer{margin-top:var(--sp-5);text-align:center;font-size:.78rem;color:var(--mist-2)}
+    .file-footer a{color:var(--mist);transition:color var(--t-fast)}
+    .file-footer a:hover{color:var(--signal)}
+
+    @media(max-width:480px){
+      .vp-vol-group{display:none}
+      .vp-resume-toast{font-size:.72rem;padding:6px 6px 6px 12px}
+      .vp-tap-ripple{padding:8px 11px;font-size:.78rem}
+    }
+  </style>
+
+  {# ── Structured data for rich results ── #}
+  <script type="application/ld+json">
+  {
+    "@context":"https://schema.org",
+    "@type":"MediaObject",
+    "name":{{ file_name|tojson }},
+    "encodingFormat":{{ mime_type|tojson }},
+    "contentUrl":{{ download_url|tojson }}
+  }
+  </script>
+</head>
+<body>
+
+{% include "_chrome.html" %}
+
+<div class="page-wrap">
+<div class="card file-card">
+
+  {% if has_thumbnail and thumb_url %}
+  <div class="thumb-wrap">
+    <div class="thumb-skel"></div>
+    <img src="{{ thumb_url }}" alt="Preview of {{ file_name }}" loading="lazy"
+         onload="this.previousElementSibling && this.previousElementSibling.remove()"
+         onerror="this.parentElement.innerHTML='<div class=thumb-placeholder>{{ icon }}</div>'"/>
+  </div>
+  {% else %}
+  <div class="icon-wrap"><span>{{ icon }}</span></div>
+  {% endif %}
+
+  <h1>{{ file_name }}</h1>
+
+  {% if expiry_str %}
+  <div class="expiry-badge {% if expiry_str == 'Expired' %}expired{% endif %}">
+    {% if expiry_str == 'Expired' %}Link expired{% else %}Expires in {{ expiry_str }}{% endif %}
+  </div>
+  {% endif %}
+
+  <div class="meta">
+    <span class="chip">{{ file_size }}</span>
+    <span class="chip">{{ mime_type }}</span>
+    <span class="chip" title="Page views">{{ view_count }} views</span>
+    {% if is_streamable %}<span class="chip chip-transfer" title="Times streamed">{{ stream_count }} streams</span>{% endif %}
+    <span class="chip chip-signal" title="Times downloaded">{{ dl_count }} downloads</span>
+  </div>
+
+  <div class="btn-group">
+    <a class="btn btn-primary btn-block" href="{{ download_url }}" id="dlBtn" onclick="return startResumableDownload(event)">
+      <span id="dlBtnLabel">Download</span>
+    </a>
+
+    {% if is_streamable %}
+    <div class="btn-row">
+      {% if is_video %}
+      <button class="btn btn-transfer" type="button" onclick="scrollToPlayer()">Stream video</button>
+      {% elif is_audio %}
+      <button class="btn btn-transfer" type="button" onclick="scrollToPlayer()">Stream audio</button>
+      {% else %}
+      <a class="btn btn-transfer" href="{{ stream_url }}" target="_blank" rel="noopener">Stream</a>
+      {% endif %}
+      <button class="btn btn-ghost" type="button" onclick="FL.copy('{{ stream_url }}','Stream link copied')">Copy link</button>
+    </div>
+    {% endif %}
+
+    <button class="btn btn-ghost btn-block" type="button" onclick="FL.copy(window.location.href,'Page link copied')">Copy page link</button>
+  </div>
+
+  <div class="dl-progress" id="dlProgress"><div class="dl-progress-bar" id="dlBar"></div></div>
+  <div class="dl-status" id="dlStatus" style="display:none;font-size:.85rem;margin-top:6px;color:var(--mist)"></div>
+
+  {% if is_streamable %}
+  <div class="player-section" id="playerSection">
+    <div class="player-label">
+      <span class="signal-bars live" style="height:12px;gap:2px" aria-hidden="true"><span class="bar" style="width:2px"></span><span class="bar" style="width:2px"></span><span class="bar" style="width:2px"></span></span>
+      Live preview
+    </div>
+
+    {% if is_video %}
+    <div class="vp-wrap" id="vpWrap">
+      <video id="vp" preload="metadata" playsinline x-webkit-airplay="allow" src="{{ stream_url }}"
+             poster="{% if thumb_url %}{{ thumb_url }}{% endif %}">
+        {% if subtitle_url %}<track id="vpTrack" kind="subtitles" src="{{ subtitle_url }}" srclang="en" label="Captions">{% endif %}
+        Your browser does not support video playback.
+      </video>
+      <div class="vp-unsupported" id="vpUnsupported" style="display:none">
+        <div class="vp-unsupported-icon">🎬</div>
+        <p><b>Your browser can't play this format inline.</b></p>
+        <p class="vp-unsupported-sub">Some containers (like this one) aren't decodable by browsers' built-in players. Download it or open the stream link in VLC, MX Player, or another media app — it'll play perfectly there.</p>
+        <div class="vp-unsupported-actions">
+          <a class="btn btn-primary" href="{{ stream_url }}" id="vpOpenExternal"><span>🔗</span> <span>Open Stream Link</span></a>
+        </div>
+      </div>
+      <div class="vp-spinner" id="vpSpinner"><div class="spinner-ring"></div></div>
+      <div class="vp-flash"><div class="vp-flash-icon" id="vpFlash"></div></div>
+
+      <div class="vp-tapzone vp-tapzone-left" id="vpTapLeft"><span class="vp-tap-ripple" id="vpRippleLeft">⏪ 10</span></div>
+      <div class="vp-tapzone vp-tapzone-right" id="vpTapRight"><span class="vp-tap-ripple" id="vpRippleRight">10 ⏩</span></div>
+
+      <div class="vp-resume-toast" id="vpResumeToast">
+        <span id="vpResumeText"></span>
+        <button type="button" onclick="dismissResume(false)">Resume</button>
+        <button type="button" onclick="dismissResume(true)">Start Over</button>
+      </div>
+
+      <div class="vp-controls" id="vpControls">
+        <div class="vp-progress-wrap" id="vpProgressWrap" onmousedown="seekStart(event)" ontouchstart="seekStart(event)" onmousemove="hoverProgress(event)" onmouseleave="hideHoverTime()">
+          <div class="vp-buffered" id="vpBuffered"></div>
+          <div class="vp-played" id="vpPlayed"></div>
+          <div class="vp-thumb" id="vpThumb"></div>
+          <div class="vp-hover-time" id="vpHoverTime"></div>
+        </div>
+        <div class="vp-ctrl-row">
+          <button class="vp-btn" id="vpPlayBtn" onclick="togglePlay()" title="Play/Pause (Space)" aria-label="Play/Pause">▶</button>
+          <button class="vp-btn" onclick="stopVideo()" title="Stop" aria-label="Stop">⏹</button>
+          <button class="vp-btn" onclick="seekRel(-10)" title="Back 10s (←)" aria-label="Back 10 seconds">⏪</button>
+          <button class="vp-btn" onclick="seekRel(10)" title="Forward 10s (→)" aria-label="Forward 10 seconds">⏩</button>
+          <span class="vp-time" id="vpTime">0:00 / 0:00</span>
+          <span class="vp-spacer"></span>
+          <div class="vp-vol-group">
+            <button class="vp-btn" onclick="toggleMute()" id="vpMuteBtn" title="Mute (M)" aria-label="Mute">🔊</button>
+            <input type="range" class="vp-vol" id="vpVol" min="0" max="1" step="0.05" value="1" oninput="setVolume(this.value)" title="Volume" aria-label="Volume"/>
+          </div>
+          <button class="vp-btn" id="vpAirplayBtn" onclick="showAirplay()" title="AirPlay" aria-label="AirPlay" style="display:none">📡</button>
+          <button class="vp-btn" onclick="togglePiP()" title="Picture-in-Picture" aria-label="Picture in Picture">⧉</button>
+          <div class="vp-settings-wrap">
+            <button class="vp-btn" id="vpSettingsBtn" onclick="toggleSettings()" title="Settings" aria-label="Settings">⚙</button>
+            <div class="vp-settings-menu" id="vpSettingsMenu">
+              <div class="vp-settings-row">
+                <span>Speed</span>
+                <select class="vp-speed" id="vpSpeed" onchange="setSpeed(this.value)" title="Playback speed" aria-label="Playback speed">
+                  <option value="0.5">0.5×</option><option value="1" selected>1×</option>
+                  <option value="1.25">1.25×</option><option value="1.5">1.5×</option>
+                  <option value="1.75">1.75×</option><option value="2">2×</option>
+                </select>
+              </div>
+              <div class="vp-settings-row">
+                <span>Loop</span>
+                <label class="vp-switch"><input type="checkbox" id="vpLoop" onchange="setLoop(this.checked)"/><span class="vp-switch-track"></span></label>
+              </div>
+              <div class="vp-settings-row" id="vpAudioRow" style="display:none">
+                <span>Audio</span>
+                <select class="vp-speed" id="vpAudioSelect" onchange="setAudioTrack(this.value)" title="Audio track" aria-label="Audio track"></select>
+              </div>
+              {% if subtitle_url %}
+              <div class="vp-settings-row">
+                <span>Subtitles</span>
+                <select class="vp-speed" id="vpSubSelect" onchange="setSubtitleTrack(this.value)" title="Subtitles" aria-label="Subtitles">
+                  <option value="off" selected>Off</option>
+                  <option value="0">English</option>
+                </select>
+              </div>
+              {% endif %}
+            </div>
+          </div>
+          <button class="vp-btn" onclick="toggleFS()" title="Fullscreen (F)" aria-label="Fullscreen">⛶</button>
+        </div>
+      </div>
+    </div>
+    {% elif is_audio %}
+    <audio controls preload="metadata" src="{{ stream_url }}" id="audioPlayer">
+      Your browser does not support audio playback.
+    </audio>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <div class="file-footer">Powered by <a href="/">{{ site_name }}</a> · Created by {{ creator_name }}</div>
+</div>
+</div>
+
+<div class="auto-guide" id="autoGuide">
+  <span class="ag-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></span>
+  <span class="ag-text" id="autoGuideText"></span>
+  <button class="ag-close" type="button" onclick="dismissAutoGuide()" aria-label="Dismiss">✕</button>
+</div>
+
+<script src="/static/theme.js?v=10" defer></script>
+<script>
+/* ── Resumable download ────────────────────────────────────────────────────
+   BUG FIX (stuck download after connection drop): the download button used
+   to be a plain <a href> — a native browser download with a FAKE progress
+   bar (just a timed animation, not real bytes). If the connection dropped
+   mid-download, there was nothing on the page tracking real progress, so
+   there was no way to detect the drop or resume from where it left off —
+   the user just saw a stalled browser download with no in-page feedback,
+   and had to manually retry from scratch.
+
+   This replaces it with a real fetch()-based downloader that:
+   - Tracks actual bytes received (real progress %, not fake).
+   - On any network failure, remembers the exact byte offset reached.
+   - Listens for the browser's `online` event and automatically resumes
+     the SAME download from that exact byte offset using a Range request
+     (the server already supports Range — see web/app.py) — no manual
+     retry, no starting over.
+   - Assembles the resulting Blob only once complete, then triggers the
+     actual file save via a synthetic download link.
+   ────────────────────────────────────────────────────────────────────── */
+var _dlChunks=[];        // array of Blob parts received so far, in order
+var _dlReceived=0;       // total bytes received so far
+var _dlTotal=0;          // total file size (from Content-Length/Content-Range)
+var _dlUrl=null;         // download URL for the current attempt
+var _dlFilename=null;    // filename to save as
+var _dlActive=false;     // true while a download is in progress or paused-by-disconnect
+var _dlAwaitingReconnect=false;
+
+function _dlSetStatus(text){
+  var el=document.getElementById('dlStatus');
+  if(!el)return;
+  if(!text){el.style.display='none';el.textContent='';return;}
+  el.style.display='block';el.textContent=text;
+}
+
+function _dlSetProgress(pct){
+  var wrap=document.getElementById('dlProgress'),bar=document.getElementById('dlBar');
+  if(!wrap||!bar)return;
+  wrap.classList.add('active');
+  bar.style.width=Math.max(0,Math.min(100,pct))+'%';
+}
+
+function _dlFilenameFromHeaders(resp, fallback){
+  var cd=resp.headers.get('Content-Disposition')||'';
+  var m=/filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(cd);
+  if(!m)return fallback;
+  var name=decodeURIComponent(m[1]);
+  // BUG FIX (download creates an extra folder): a slash inside the value
+  // assigned to a.download is treated by the browser as a path separator,
+  // silently creating subfolders in Downloads instead of saving the file
+  // directly. The server already sanitizes this (see web/app.py), but we
+  // strip here too as a second line of defense — this filename ends up
+  // directly in a.download a few lines below.
+  return name.replace(/[\/\\]/g,'_');
+}
+
+async function _dlRun(){
+  var label=document.getElementById('dlBtnLabel');
+  _dlActive=true;_dlAwaitingReconnect=false;
+  if(label)label.textContent='Downloading…';
+  try{
+    var headers={};
+    if(_dlReceived>0){headers['Range']='bytes='+_dlReceived+'-';}
+    var resp=await fetch(_dlUrl,{headers:headers});
+    if(!resp.ok && resp.status!==206 && resp.status!==200){
+      throw new Error('Server responded '+resp.status);
+    }
+    if(!_dlFilename){_dlFilename=_dlFilenameFromHeaders(resp,'download');}
+    if(_dlTotal===0){
+      var cr=resp.headers.get('Content-Range'); // "bytes X-Y/TOTAL"
+      var cl=resp.headers.get('Content-Length');
+      if(cr){var mtot=/\/(\d+)$/.exec(cr);if(mtot)_dlTotal=parseInt(mtot[1],10);}
+      else if(cl){_dlTotal=parseInt(cl,10);}
+    }
+
+    var reader=resp.body.getReader();
+    while(true){
+      var res;
+      try{
+        res=await reader.read();
+      }catch(readErr){
+        // Connection dropped mid-stream — pause here, remember exactly how
+        // much we have, and wait for the browser to tell us we're back
+        // online instead of failing outright.
+        throw readErr;
+      }
+      if(res.done)break;
+      _dlChunks.push(res.value);
+      _dlReceived+=res.value.length;
+      if(_dlTotal>0){
+        _dlSetProgress((_dlReceived/_dlTotal)*100);
+        _dlSetStatus('Downloading… '+Math.round((_dlReceived/_dlTotal)*100)+'%');
+      }else{
+        _dlSetStatus('Downloading… ('+(_dlReceived/1048576).toFixed(1)+' MB)');
+      }
+    }
+
+    // Complete — assemble and trigger the actual save.
+    _dlSetProgress(100);
+    _dlSetStatus('Finishing up…');
+    var blob=new Blob(_dlChunks);
+    var blobUrl=URL.createObjectURL(blob);
+    var a=document.createElement('a');
+    a.href=blobUrl;a.download=_dlFilename||'download';
+    document.body.appendChild(a);a.click();document.body.removeChild(a);
+    setTimeout(function(){URL.revokeObjectURL(blobUrl);},4000);
+
+    _dlActive=false;_dlChunks=[];_dlReceived=0;_dlTotal=0;
+    if(label)label.textContent='Download';
+    _dlSetStatus('✅ Download complete');
+    setTimeout(function(){
+      _dlSetStatus('');
+      var wrap=document.getElementById('dlProgress');
+      if(wrap){wrap.classList.remove('active');document.getElementById('dlBar').style.width='0';}
+    },2500);
+
+  }catch(err){
+    // Network failure — most likely the user's internet dropped mid-
+    // download. Don't discard progress: stay paused and wait for the
+    // `online` event to automatically resume from _dlReceived below,
+    // instead of leaving the user stuck with no path forward.
+    _dlAwaitingReconnect=true;
+    if(label)label.textContent='Waiting for connection…';
+    if(_dlTotal>0){
+      _dlSetStatus('⚠️ Connection lost at '+Math.round((_dlReceived/_dlTotal)*100)+'% — will resume automatically once you\'re back online.');
+    }else{
+      _dlSetStatus('⚠️ Connection lost — will resume automatically once you\'re back online.');
+    }
+  }
+}
+
+window.addEventListener('online',function(){
+  if(_dlAwaitingReconnect && _dlActive){
+    _dlSetStatus('🔄 Back online — resuming download…');
+    _dlRun();
+  }
+});
+
+window.startResumableDownload=function(e){
+  if(e && e.preventDefault)e.preventDefault();
+  if(_dlActive && !_dlAwaitingReconnect)return false; // already running
+  if(_dlAwaitingReconnect){
+    // User tapped the button again while paused — try resuming right now
+    // instead of only waiting for the passive `online` event, in case the
+    // browser fired it before the page could react (or on flaky/captive-
+    // portal connections that don't always trigger it reliably).
+    _dlRun();
+    return false;
+  }
+  var btn=document.getElementById('dlBtn');
+  _dlUrl=btn?btn.getAttribute('href'):null;
+  if(!_dlUrl)return true; // fall back to native <a> behavior if something's off
+  _dlChunks=[];_dlReceived=0;_dlTotal=0;_dlFilename=null;
+  _dlRun();
+  return false;
+};
+
+function scrollToPlayer(){
+  var el=document.getElementById('playerSection');
+  if(el)el.scrollIntoView({behavior:'smooth',block:'start'});
+  var v=document.getElementById('vp');if(v)v.play().catch(function(){});
+}
+
+/* ── Custom video player ── */
+(function(){
+  var vp=document.getElementById('vp');if(!vp)return;
+  var wrap=document.getElementById('vpWrap'),playBtn=document.getElementById('vpPlayBtn'),
+      muteBtn=document.getElementById('vpMuteBtn'),timeEl=document.getElementById('vpTime'),
+      played=document.getElementById('vpPlayed'),buffered=document.getElementById('vpBuffered'),
+      thumb=document.getElementById('vpThumb'),volEl=document.getElementById('vpVol'),
+      spinner=document.getElementById('vpSpinner'),flash=document.getElementById('vpFlash'),
+      unsupported=document.getElementById('vpUnsupported'),controls=document.getElementById('vpControls');
+
+  /* ── Graceful fallback for containers the browser can't decode ──
+     Some formats (mkv/avi/wmv/flv with certain codecs) have correct
+     Content-Type + working Range support server-side, but the browser's
+     built-in <video> decoder simply can't play them. Rather than leaving
+     a silently broken black box, detect this up front via canPlayType()
+     AND catch a real decode failure via the 'error' event, then swap to
+     a friendly panel pointing at the stream link for an external player. */
+  function showUnsupported(){
+    if(!unsupported)return;
+    wrap.classList.add('is-unsupported');
+    vp.style.display='none';
+    if(controls)controls.style.display='none';
+    if(spinner)spinner.classList.remove('active');
+    unsupported.style.display='flex';
+  }
+  try{
+    var mime={{ mime_type|tojson }};
+    if(mime && vp.canPlayType && vp.canPlayType(mime)===''){
+      showUnsupported();
+      return; // no point wiring up the rest of the custom controls
+    }
+  }catch(e){}
+  vp.addEventListener('error',function(){ showUnsupported(); });
+  var STORAGE_KEY='vlp_pos_{{ file_uid }}';
+  var PREF_VOL='vlp_pref_vol',PREF_SPEED='vlp_pref_speed',PREF_LOOP='vlp_pref_loop';
+  function fmtTime(s){if(!isFinite(s))return'0:00';var h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sc=Math.floor(s%60);return h?h+':'+String(m).padStart(2,'0')+':'+String(sc).padStart(2,'0'):m+':'+String(sc).padStart(2,'0');}
+  function updateTimeUI(){if(!timeEl)return;var cur=vp.currentTime,dur=vp.duration||0;timeEl.textContent=fmtTime(cur)+' / '+fmtTime(dur);var pct=dur?cur/dur:0;if(played)played.style.width=(pct*100)+'%';if(thumb)thumb.style.left=(pct*100)+'%';}
+  function updateBufferUI(){if(!buffered||!vp.buffered.length)return;try{var end=vp.buffered.end(vp.buffered.length-1);var pct=vp.duration?end/vp.duration:0;buffered.style.width=(pct*100)+'%';}catch(e){}}
+  function updatePlayBtn(){if(playBtn)playBtn.textContent=vp.paused?'▶':'⏸';}
+  function flashIcon(icon){if(!flash)return;flash.textContent=icon;flash.classList.remove('pop');void flash.offsetWidth;flash.classList.add('pop');}
+
+  /* ── Remembered preferences: volume / speed / loop persist across files ── */
+  function applyStoredPrefs(){
+    try{
+      var v=localStorage.getItem(PREF_VOL);
+      if(v!==null){vp.volume=parseFloat(v);if(volEl)volEl.value=vp.volume;if(muteBtn)muteBtn.textContent=vp.volume<0.01?'🔇':(vp.volume<0.5?'🔉':'🔊');}
+      var sp=localStorage.getItem(PREF_SPEED);
+      if(sp!==null){vp.playbackRate=parseFloat(sp);var sel=document.getElementById('vpSpeed');if(sel)sel.value=sp;}
+      var lp=localStorage.getItem(PREF_LOOP);
+      if(lp==='1'){vp.loop=true;var cb=document.getElementById('vpLoop');if(cb)cb.checked=true;}
+    }catch(e){}
+  }
+
+  /* ── Resume-from-last-position toast ── */
+  function showResumeToast(saved){
+    var toast=document.getElementById('vpResumeToast'),txt=document.getElementById('vpResumeText');
+    if(!toast||!txt)return;
+    txt.textContent='Resumed from '+fmtTime(saved);
+    toast.classList.add('show');
+    clearTimeout(showResumeToast._t);
+    showResumeToast._t=setTimeout(function(){toast.classList.remove('show');},6000);
+  }
+  window.dismissResume=function(restart){
+    var toast=document.getElementById('vpResumeToast');
+    if(toast)toast.classList.remove('show');
+    if(restart){vp.currentTime=0;try{localStorage.removeItem(STORAGE_KEY);}catch(e){}}
+  };
+
+  vp.addEventListener('loadedmetadata',function(){
+    updateTimeUI();
+    applyStoredPrefs();
+    try{
+      var saved=parseFloat(localStorage.getItem(STORAGE_KEY)||'0');
+      if(saved>5&&saved<vp.duration-3){vp.currentTime=saved;showResumeToast(saved);}
+    }catch(e){}
+  });
+  vp.addEventListener('timeupdate',function(){updateTimeUI();try{if(Math.floor(vp.currentTime)%5===0)localStorage.setItem(STORAGE_KEY,vp.currentTime);}catch(e){}});
+  vp.addEventListener('progress',updateBufferUI);
+  vp.addEventListener('play',updatePlayBtn);vp.addEventListener('pause',updatePlayBtn);
+  vp.addEventListener('ended',function(){updatePlayBtn();try{if(!vp.loop)localStorage.removeItem(STORAGE_KEY);}catch(e){}});
+  vp.addEventListener('waiting',function(){spinner&&spinner.classList.add('active');});
+  vp.addEventListener('playing',function(){spinner&&spinner.classList.remove('active');});
+  vp.addEventListener('canplay',function(){spinner&&spinner.classList.remove('active');});
+  vp.addEventListener('click',function(){togglePlay();});
+
+  /* ── Controls auto-hide + cursor auto-hide while playing ── */
+  var hideTimer;
+  function showControls(){
+    wrap.classList.add('show-controls');wrap.classList.remove('cursor-hide');clearTimeout(hideTimer);
+    if(!vp.paused)hideTimer=setTimeout(function(){wrap.classList.remove('show-controls');wrap.classList.add('cursor-hide');},3000);
+  }
+  wrap.addEventListener('mousemove',showControls);
+  wrap.addEventListener('touchstart',showControls,{passive:true});
+  vp.addEventListener('pause',function(){wrap.classList.add('show-controls');wrap.classList.remove('cursor-hide');clearTimeout(hideTimer);});
+  vp.addEventListener('play',showControls);
+
+  /* ── Seek bar scrub + hover-time preview ── */
+  var seeking=false;
+  // PERF: hoverProgress/seekTo used to run on every raw mousemove event
+  // (can fire 60-100+ times/sec) — each call forces a layout recalculation
+  // (getBoundingClientRect) and, for drag-seeking, sets vp.currentTime,
+  // which makes the browser re-seek/re-buffer the video on every single
+  // pixel of mouse movement. That's the actual cause of visible stutter
+  // when scrubbing. Coalescing updates to once per animation frame (via
+  // rAF) keeps the UI perfectly responsive to the eye while cutting the
+  // real work down to the display's refresh rate instead of the mouse's
+  // polling rate.
+  var _hoverRAF=null,_pendingHoverEvent=null;
+  var _seekRAF=null,_pendingSeekEvent=null;
+
+  function seekTo(e){var rect=document.getElementById('vpProgressWrap').getBoundingClientRect();var clientX=(e.touches?e.touches[0].clientX:e.clientX);var pct=Math.max(0,Math.min(1,(clientX-rect.left)/rect.width));if(vp.duration)vp.currentTime=pct*vp.duration;updateTimeUI();}
+  window.seekStart=function(e){
+    seeking=true;seekTo(e);
+    var move=function(ev){
+      if(!seeking)return;
+      _pendingSeekEvent=ev;
+      if(_seekRAF)return;
+      _seekRAF=requestAnimationFrame(function(){_seekRAF=null;if(seeking&&_pendingSeekEvent)seekTo(_pendingSeekEvent);});
+    };
+    var up=function(){
+      seeking=false;
+      if(_seekRAF){cancelAnimationFrame(_seekRAF);_seekRAF=null;}
+      window.removeEventListener('mousemove',move);window.removeEventListener('mouseup',up);
+      window.removeEventListener('touchmove',move);window.removeEventListener('touchend',up);
+    };
+    window.addEventListener('mousemove',move);window.addEventListener('mouseup',up);
+    window.addEventListener('touchmove',move,{passive:true});window.addEventListener('touchend',up);
+  };
+  window.hoverProgress=function(e){
+    _pendingHoverEvent=e;
+    if(_hoverRAF)return;
+    _hoverRAF=requestAnimationFrame(function(){
+      _hoverRAF=null;
+      var ev=_pendingHoverEvent;if(!ev)return;
+      var progWrap=document.getElementById('vpProgressWrap'),hover=document.getElementById('vpHoverTime');
+      if(!progWrap||!hover||!vp.duration)return;
+      var rect=progWrap.getBoundingClientRect();
+      var pct=Math.max(0,Math.min(1,(ev.clientX-rect.left)/rect.width));
+      hover.textContent=fmtTime(pct*vp.duration);
+      hover.style.left=(pct*100)+'%';
+    });
+  };
+  window.hideHoverTime=function(){var hover=document.getElementById('vpHoverTime');if(hover)hover.textContent='';};
+
+  window.togglePlay=function(){if(vp.paused){vp.play();flashIcon('▶');}else{vp.pause();flashIcon('⏸');}};
+  window.stopVideo=function(){vp.pause();vp.currentTime=0;flashIcon('⏹');updateTimeUI();try{localStorage.removeItem(STORAGE_KEY);}catch(e){}};
+  window.seekRel=function(sec){vp.currentTime=Math.max(0,Math.min(vp.duration||0,vp.currentTime+sec));flashIcon(sec>0?'⏩':'⏪');updateTimeUI();};
+  window.setVolume=function(v){vp.volume=parseFloat(v);vp.muted=(parseFloat(v)===0);if(muteBtn)muteBtn.textContent=vp.muted?'🔇':(vp.volume<0.5?'🔉':'🔊');try{localStorage.setItem(PREF_VOL,v);}catch(e){}};
+  window.toggleMute=function(){vp.muted=!vp.muted;if(muteBtn)muteBtn.textContent=vp.muted?'🔇':'🔊';if(volEl)volEl.value=vp.muted?0:vp.volume;};
+  window.setSpeed=function(s){vp.playbackRate=parseFloat(s);try{localStorage.setItem(PREF_SPEED,s);}catch(e){}};
+  window.setLoop=function(on){vp.loop=!!on;try{localStorage.setItem(PREF_LOOP,on?'1':'0');}catch(e){}};
+  window.setSubtitleTrack=function(val){
+    var tracks=vp.textTracks;if(!tracks)return;
+    for(var i=0;i<tracks.length;i++){tracks[i].mode=(val!=='off'&&String(i)===val)?'showing':'hidden';}
+  };
+  window.setAudioTrack=function(idxStr){
+    // Native multi-audio-track switching (e.g. an MKV with 2+ embedded
+    // audio streams). Supported today in Chromium-based browsers via
+    // HTMLMediaElement.audioTracks; Firefox/Safari don't expose it, so
+    // the row stays hidden there (see populateAudioTracks below) rather
+    // than showing a control that silently does nothing.
+    if(!vp.audioTracks)return;
+    var idx=parseInt(idxStr,10);
+    for(var i=0;i<vp.audioTracks.length;i++){vp.audioTracks[i].enabled=(i===idx);}
+  };
+  function populateAudioTracks(){
+    var row=document.getElementById('vpAudioRow'),sel=document.getElementById('vpAudioSelect');
+    if(!row||!sel)return;
+    if(!vp.audioTracks||vp.audioTracks.length<2){row.style.display='none';return;}
+    sel.innerHTML='';
+    for(var i=0;i<vp.audioTracks.length;i++){
+      var t=vp.audioTracks[i];
+      var opt=document.createElement('option');
+      opt.value=String(i);
+      opt.textContent=t.label||t.language||('Track '+(i+1));
+      if(t.enabled)opt.selected=true;
+      sel.appendChild(opt);
+    }
+    row.style.display='';
+  }
+  if(vp.audioTracks){
+    vp.audioTracks.addEventListener?vp.audioTracks.addEventListener('addtrack',populateAudioTracks):null;
+    vp.addEventListener('loadedmetadata',populateAudioTracks);
+  }
+  window.togglePiP=async function(){try{if(document.pictureInPictureElement)await document.exitPictureInPicture();else await vp.requestPictureInPicture();}catch(e){}};
+  window.toggleFS=function(){var el=wrap;if(!document.fullscreenElement){(el.requestFullscreen||el.webkitRequestFullscreen||el.mozRequestFullScreen).call(el);}else{(document.exitFullscreen||document.webkitExitFullscreen||document.mozCancelFullScreen).call(document);}};
+
+  /* ── Settings (gear) popover ── */
+  window.toggleSettings=function(){var m=document.getElementById('vpSettingsMenu');if(m)m.classList.toggle('open');};
+  document.addEventListener('click',function(e){
+    var menu=document.getElementById('vpSettingsMenu'),btn=document.getElementById('vpSettingsBtn');
+    if(menu&&menu.classList.contains('open')&&!menu.contains(e.target)&&e.target!==btn)menu.classList.remove('open');
+  });
+
+  /* ── AirPlay (Safari) ── */
+  if(typeof vp.webkitShowPlaybackTargetPicker==='function'){
+    vp.addEventListener('webkitplaybacktargetavailabilitychanged',function(e){
+      var btn=document.getElementById('vpAirplayBtn');
+      if(btn)btn.style.display=(e.availability==='available')?'flex':'none';
+    });
+  }
+  window.showAirplay=function(){try{vp.webkitShowPlaybackTargetPicker();}catch(e){}};
+
+  /* ── Scroll-wheel volume control ── */
+  wrap.addEventListener('wheel',function(e){
+    e.preventDefault();
+    var newVol=Math.max(0,Math.min(1,vp.volume+(e.deltaY<0?0.05:-0.05)));
+    setVolume(newVol);
+    if(volEl)volEl.value=newVol;
+  },{passive:false});
+
+  /* ── Double-tap / double-click side zones to seek ±10s (YouTube-style) ── */
+  function makeTapZone(zoneId, rippleId, dir){
+    var zone=document.getElementById(zoneId),ripple=document.getElementById(rippleId);
+    if(!zone||!ripple)return;
+    var lastTap=0,singleTimer=null;
+    zone.addEventListener('click',function(){
+      var now=Date.now();
+      if(now-lastTap<380){
+        clearTimeout(singleTimer);lastTap=0;
+        seekRel(dir*10);
+        ripple.classList.remove('show');void ripple.offsetWidth;ripple.classList.add('show');
+        setTimeout(function(){ripple.classList.remove('show');},450);
+      }else{
+        lastTap=now;
+        singleTimer=setTimeout(function(){togglePlay();},380);
+      }
+    });
+  }
+  makeTapZone('vpTapLeft','vpRippleLeft',-1);
+  makeTapZone('vpTapRight','vpRippleRight',1);
+
+  /* ── Keyboard shortcuts ── */
+  document.addEventListener('keydown',function(e){
+    if(['INPUT','SELECT','TEXTAREA'].includes(document.activeElement.tagName))return;
+    switch(e.key){
+      case ' ':case'k':e.preventDefault();togglePlay();break;
+      case'ArrowRight':e.preventDefault();seekRel(10);break;
+      case'ArrowLeft':e.preventDefault();seekRel(-10);break;
+      case'ArrowUp':e.preventDefault();setVolume(Math.min(1,vp.volume+.1));if(volEl)volEl.value=vp.volume;break;
+      case'ArrowDown':e.preventDefault();setVolume(Math.max(0,vp.volume-.1));if(volEl)volEl.value=vp.volume;break;
+      case'm':case'M':toggleMute();break;
+      case'f':case'F':toggleFS();break;
+      case'p':case'P':togglePiP();break;
+      case'l':case'L':{var cb=document.getElementById('vpLoop');if(cb){cb.checked=!cb.checked;setLoop(cb.checked);}break;}
+      case'c':case'C':{
+        var subSel=document.getElementById('vpSubSelect');
+        if(subSel){subSel.value=(subSel.value==='off')?'0':'off';setSubtitleTrack(subSel.value);}
+        break;
+      }
+    }
+  });
+
+  /* ── Swipe left/right anywhere on the player to seek (mobile) ── */
+  var touchX0=null;
+  wrap.addEventListener('touchstart',function(e){touchX0=e.touches[0].clientX;},{passive:true});
+  wrap.addEventListener('touchend',function(e){if(touchX0===null)return;var dx=e.changedTouches[0].clientX-touchX0;if(Math.abs(dx)>40)seekRel(dx>0?10:-10);touchX0=null;});
+})();
+
+/* ── Auto Guide — one-time, no-command help banner ──
+   Fires on EVERY file page (video, audio, or plain document), not just
+   ones with a player, since it's explained outside the player IIFE above
+   (which bails out immediately via `if(!vp)return` for non-video pages).
+   Shows once per browser ever, via a localStorage flag — no command, no
+   click, nothing to discover; it just appears, and never nags again once
+   dismissed (dismissed = clicked the ✕ OR let it auto-hide). */
+(function(){
+  var KEY='fl_seen_guide';
+  try{ if(localStorage.getItem(KEY))return; }catch(e){ return; }
+  var banner=document.getElementById('autoGuide'),textEl=document.getElementById('autoGuideText');
+  if(!banner||!textEl)return;
+  var isStreamable={{ 'true' if is_streamable else 'false' }};
+  textEl.innerHTML = isStreamable
+    ? 'First time here? Tap <b>Stream</b> to play this instantly in your browser, or <b>Download</b> to save it — no app needed.'
+    : 'First time here? Tap <b>Download</b> to save this file to your device.';
+  setTimeout(function(){banner.classList.add('show');},700);
+  window._autoGuideAutoHide=setTimeout(function(){dismissAutoGuide();},14000);
+})();
+window.dismissAutoGuide=function(){
+  var banner=document.getElementById('autoGuide');
+  if(banner)banner.classList.remove('show');
+  clearTimeout(window._autoGuideAutoHide);
+  try{localStorage.setItem('fl_seen_guide','1');}catch(e){}
+};
+</script>
+</body>
+</html>
