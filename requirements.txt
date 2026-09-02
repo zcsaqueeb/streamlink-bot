@@ -1,0 +1,22 @@
+pyrogram==2.0.106
+TgCrypto
+motor
+aiohttp>=3.9.0
+Jinja2>=3.1.0
+python-dotenv
+# Guarantees IANA timezone data is available for the /timezone command
+# regardless of the deployment OS — slim Docker images (like this project's
+# own Dockerfile: python:3.11.9-slim) often don't ship /usr/share/zoneinfo,
+# and Python's own zoneinfo docs recommend this package for exactly that
+# case. Pure-Python, maintained by the CPython core team, tiny footprint.
+tzdata
+# Chart rendering for the /analytics admin command (headless PNG generation
+# via the non-interactive Agg backend — see plugins/stats.py). Not required
+# for anything else; if it's ever missing on a host, /analytics degrades to
+# a clear "install matplotlib" message rather than breaking anything else.
+matplotlib>=3.7.0
+# Optional: real content-sniffing fallback for files with a missing/wrong
+# extension (web/app.py degrades gracefully to extension-only guessing if
+# this — or the underlying libmagic system library — isn't available).
+python-magic; platform_system != "Windows"
+python-magic-bin; platform_system == "Windows"
