@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  {% include "_head.html" %}
+  <style>
+    body{padding:var(--sp-5) 0 var(--sp-6)}
+    .wrap{max-width:1100px;margin:0 auto;padding:0 var(--sp-4);position:relative;z-index:1}
+
+    .l-header{text-align:center;margin-bottom:var(--sp-5)}
+    .l-header .signal-bars{justify-content:center;display:flex;margin-bottom:14px;height:30px}
+    .l-header h1{font-size:1.7rem;margin-bottom:8px}
+    .l-header p{color:var(--mist);font-size:.88rem}
+
+    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px}
+
+    .l-card{display:flex;flex-direction:column;overflow:hidden;
+      transition:transform var(--t-med) var(--ease),box-shadow var(--t-med),border-color var(--t-fast)}
+    .l-card:hover{transform:translateY(-4px);box-shadow:var(--shadow-pop)}
+
+    .card-thumb{width:100%;height:140px;background:var(--ink-4);display:flex;align-items:center;
+      justify-content:center;font-size:44px;overflow:hidden;position:relative;opacity:.85}
+    .card-thumb img{width:100%;height:100%;object-fit:cover;transition:transform .3s}
+    .l-card:hover .card-thumb img{transform:scale(1.05)}
+    .card-thumb-skel{position:absolute;inset:0;background:linear-gradient(100deg,var(--ink-4) 30%,var(--ink-3) 50%,var(--ink-4) 70%);background-size:200% 100%;animation:shimmer 1.6s linear infinite}
+    @keyframes shimmer{to{background-position:-200% 0}}
+    .play-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+      background:rgba(0,0,0,.35);opacity:0;transition:opacity .2s}
+    .play-overlay svg{width:28px;height:28px;color:#fff}
+    .l-card:hover .play-overlay{opacity:1}
+
+    .card-body{padding:14px 16px;flex:1;display:flex;flex-direction:column;gap:10px}
+    .card-name{font-weight:600;font-size:.86rem;word-break:break-word;line-height:1.35;color:var(--paper)}
+    .card-meta{display:flex;gap:6px;flex-wrap:wrap}
+    .card-meta .chip{font-family:var(--font-mono);font-size:.68rem}
+    .card-actions{display:flex;gap:8px;margin-top:auto}
+    .card-actions .btn{flex:1;padding:9px;font-size:.78rem;border-radius:var(--r-sm)}
+    .card-actions .btn.icon{flex:0 0 auto;width:38px;padding:9px}
+    .card-actions .btn svg{width:14px;height:14px}
+
+    .l-empty{text-align:center;padding:60px 20px;color:var(--mist);font-size:1rem}
+    .l-note{text-align:center;margin-top:var(--sp-4);font-size:.75rem;color:var(--mist-2);
+      font-family:var(--font-mono)}
+    .l-footer{text-align:center;margin-top:var(--sp-6);font-size:.78rem;color:var(--mist-2)}
+
+    @media(max-width:640px){
+      .grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+      .card-thumb{height:100px;font-size:32px}
+    }
+    @media(max-width:480px){
+      .l-header h1{font-size:1.35rem}
+      .card-body{padding:10px 12px;gap:8px}
+      .card-name{font-size:.78rem}
+      .card-actions{flex-wrap:wrap}
+      .card-actions .btn{flex:1 1 auto;padding:9px;font-size:.74rem}
+      .card-actions .btn.icon{flex:0 0 100%;width:100%}
+    }
+  </style>
+</head>
+<body>
+
+{% include "_chrome.html" %}
+
+<div class="wrap">
+  <div class="l-header">
+    <div class="signal-bars live" aria-hidden="true">
+      <span class="bar"></span><span class="bar"></span><span class="bar"></span><span class="bar"></span><span class="bar"></span>
+    </div>
+    <h1>Latest files</h1>
+    <p>The {% if files|length == 1 %}most recent link{% else %}{{ files|length }} most recent links{% endif %} shared through {{ site_name }}.</p>
+  </div>
+
+  {% if files %}
+  <div class="grid">
+    {% for f in files %}
+    <div class="card l-card" data-reveal>
+      <div class="card-thumb">
+        {% if f._thumb_url %}
+        <div class="card-thumb-skel"></div>
+        <img src="{{ f._thumb_url }}" alt="" loading="lazy"
+             onload="this.previousElementSibling && this.previousElementSibling.remove()"
+             onerror="this.parentElement.innerHTML='<span>{{ f._icon }}</span>'"/>
+        {% else %}<span>{{ f._icon }}</span>{% endif %}
+        {% if f._streamable %}<div class="play-overlay"><svg viewBox="0 0 24 24" fill="currentColor"><polygon points="6 3 20 12 6 21 6 3"/></svg></div>{% endif %}
+      </div>
+      <div class="card-body">
+        <div class="card-name">{{ f.file_name }}</div>
+        <div class="card-meta">
+          <span class="chip">{{ f._size_human }}</span>
+          <span class="chip">{{ f.type }}</span>
+        </div>
+        <div class="card-actions">
+          <a class="btn btn-primary" href="{{ f._download_url }}">Download</a>
+          {% if f._streamable %}<a class="btn btn-transfer icon" href="{{ f._stream_url }}" target="_blank" rel="noopener" title="Stream"><svg viewBox="0 0 24 24" fill="currentColor"><polygon points="6 3 20 12 6 21 6 3"/></svg></a>{% endif %}
+          <a class="btn btn-ghost icon" href="{{ f._page_url }}" target="_blank" rel="noopener" title="Open page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  <p class="l-note">Links are added as files arrive and drop off when they expire.</p>
+  {% else %}
+  <div class="l-empty">Nothing has been shared yet.</div>
+  {% endif %}
+
+  <div class="l-footer">Powered by {{ site_name }} · Created by {{ creator_name }}</div>
+</div>
+
+<script src="/static/theme.js?v=10" defer></script>
+</body>
+</html>

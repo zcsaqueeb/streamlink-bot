@@ -1,0 +1,21 @@
+# Everything here is either a secret or generated state. `COPY . .` in the
+# Dockerfile has no idea what git ignores, so without this file a normal
+# developer build bakes live credentials into an image layer that anyone with
+# `docker history` or `docker save` can read back out.
+.env
+*.session
+*.session-journal
+bot_settings.json
+bot_settings.json.tmp
+local_db.json
+local_db.json.tmp
+media_cache/
+__pycache__/
+*.pyc
+*.pyo
+.git/
+.gitignore
+scripts/
+*.md
+Dockerfile
+.dockerignore
