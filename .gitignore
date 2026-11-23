@@ -1,0 +1,17 @@
+__pycache__/
+*.pyc
+local_db.json
+# Both stores write through a sibling ".tmp" and os.replace() it into place, so
+# a crash mid-write leaves a plaintext copy of the settings file behind — and
+# that copy holds cookie_secret, the admin list and every generated link.
+*.tmp
+*.session
+*.session-journal
+.env
+
+# Runtime state, not source: settings_store.py writes the live admin IDs,
+# channel IDs and caption template here on the first /settings change.
+bot_settings.json
+
+# FFmpeg-extracted subtitle/audio caches (web/media.py).
+media_cache/
